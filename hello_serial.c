@@ -5,12 +5,11 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
-//
 #include "hardware/uart.h"
 
-
-bool led_on = false;
+    bool led_on = false;
 
 void toggle_led(){
     if(led_on == false){
@@ -34,14 +33,20 @@ int main() {
     int i = 0;
     char buf[64];
     while (true) {
-        toggle_led();
+        //toggle_led();
 
-        //fgets(buf, sizeof(buf), stdin);
-        //printf("Received: %s\n", buf);
+        if(fgets(buf, sizeof(buf), stdin));{
+            buf[strcspn(buf, "\r\n")] = 0; // Strip newline
 
-        //printf("Hello, world! %d\n",i);
-        //i++;
-        sleep_ms(1000);
+            if (strcmp(buf, "led toggle") == 0){
+                toggle_led();
+                printf("--toggled--\n");
+            }
+            else
+            {
+                printf("ERR: unknown command\n");
+            }
+        }
     }
 }
 
