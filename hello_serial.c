@@ -9,12 +9,39 @@
 //
 #include "hardware/uart.h"
 
-int main() {
+
+bool led_on = false;
+
+void toggle_led(){
+    if(led_on == false){
+        gpio_put(25, 1);
+        led_on = true;
+    } else {
+        gpio_put(25, 0);
+        led_on = false;
+    }
+}
+
+void init_everything(){
+    gpio_init(25);              // Initialize GPIO 25 (onboard LED)
+    gpio_set_dir(25, GPIO_OUT); // Set it as an output
     stdio_init_all();
+}
+
+int main() {
+    init_everything();
+
     int i = 0;
+    char buf[64];
     while (true) {
-        printf("Hello, world! %d\n",i);
-        i++;
+        toggle_led();
+
+        //fgets(buf, sizeof(buf), stdin);
+        //printf("Received: %s\n", buf);
+
+        //printf("Hello, world! %d\n",i);
+        //i++;
         sleep_ms(1000);
     }
 }
+

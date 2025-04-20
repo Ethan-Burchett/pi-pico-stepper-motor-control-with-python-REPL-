@@ -25,8 +25,3 @@ while True:
 
 
 
-# print("Sending data to Pico...")
-# ser.write(b'1')  # Send a single character
-# # ser.write(b'hello\n')  # Send a full line
-
-# ser.close()
