@@ -21,6 +21,7 @@ void toggle_led(){
     }
 }
 
+
 void init_everything(){
     gpio_init(25);              // Initialize GPIO 25 (onboard LED)
     gpio_set_dir(25, GPIO_OUT); // Set it as an output
@@ -42,6 +43,15 @@ int main() {
                 toggle_led();
                 printf("--toggled--\n");
             }
+            if (strcmp(buf, "led blink") == 0)
+            {
+                printf("--blink--\n");
+                while(true){
+                    toggle_led();
+                    sleep_ms(200);
+                }
+            }
+
             else
             {
                 printf("ERR: unknown command\n");
