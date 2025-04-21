@@ -9,8 +9,16 @@ except Exception as e:
     
 time.sleep(2)  # Let the Pico finish booting
 
-ser.write(b"led toggle\n")  # Send the command
-response = ser.readline().decode().strip()
-print("Pico says:", response)
+print("Enter a command:")
+while True:
+    user_input = input("> ")
+    #ser.write(b"led toggle\n")  # Send the command
+    if(user_input == "exit"):
+        print("exiting...")
+        break
+    ser.write((user_input + "\n").encode()) #convert to bytes
+    response = ser.readline().decode().strip()
+    print("<", response)
+
 
 ser.close()
