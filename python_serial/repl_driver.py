@@ -54,6 +54,7 @@ def linear_oscillating_speed(
     while time.time() - start_time < duration_sec:
         for delay in full_cycle:
             write_to_pico(f"speed {delay}")
+            print("delay:", delay)
             time.sleep(0.05)  # ~20Hz update rate
 
 
@@ -78,9 +79,9 @@ while True:
         print("exiting...")
         break
     if(user_input == "sine"):
-        variable_speed(0.3,1000,8000,30)
+        variable_speed(0.1,130,1000,30)
     if(user_input == "linear"):
-        linear_oscillating_speed(1,1000,20,200)
+        linear_oscillating_speed(1,5000,20,500)
    
     write_to_pico(user_input)
     read_from_pico()
