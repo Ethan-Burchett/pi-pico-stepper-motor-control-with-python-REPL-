@@ -9,9 +9,10 @@
 #include <sstream>
 #include <iostream> 
 
-extern "C" {
+extern "C" { // put c libraries here so compiler doesn't get confused
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
+#include "pico/multicore.h"
 }
 
 using namespace std;
@@ -49,6 +50,7 @@ void blink_led(int times){
     }
 }
 
+
 void init_stepper(){
 
     gpio_init(STEP_PIN);
@@ -76,9 +78,34 @@ void step_motor(int steps, bool dir, int delay_us = 10000)
         gpio_put(STEP_PIN, 0);
         sleep_us(delay_us - 10); // Adjust for total step delay
     }
+    //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power   
+}
 
-    //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power
-    
+// globals for stepper motor:
+volatile int step_delay_us = 10000;
+
+bool motor_running = false;
+void enable_motor(bool active)
+{ // use this function to start and stop the motor
+    motor_running = active;
+}
+
+void continuous_stepper()
+{
+    while (true)
+    {
+        if (motor_running)
+        {
+            gpio_put(STEP_PIN, 1);
+            sleep_us(10);
+            gpio_put(STEP_PIN, 0);
+            sleep_us(step_delay_us - 10);
+        }
+        else
+        {
+            sleep_ms(10); // chill when not stepping
+        }
+    }
 }
 
 void init_everything(){
@@ -91,41 +118,80 @@ void init_everything(){
     sleep_ms(100);
     step_motor(20, false, 10000);
 }
-void process_command(string line){
+void process_command(string line)
+{
     // break cmd into arguments
     string cmd;
     istringstream iss(line);
     iss >> cmd;
 
-    if(cmd == "step"){
+    if (cmd == "step")
+    {
         int steps;
         string dir;
         int delay;
         iss >> steps >> dir >> delay;
         bool clockwise;
-        if(dir == "cw" || dir == "CW"){
+        if (dir == "cw" || dir == "CW")
+        {
             clockwise = true;
-        } else {clockwise = false;}
-        step_motor(steps,clockwise,delay = 10000); // delay should have a default to be 10000
-        cout<<"motor moved: "<<steps<<" steps "<<dir<<endl;
-    }
-    else if(cmd == "led"){
-        string led_arg; 
-        int blink_times;
-        iss>>led_arg;
-        if(led_arg == "toggle"){
-            toggle_led();
-            cout<<"--toggled--"<<endl;
         }
-        if(led_arg == "blink"){
+        else
+        {
+            clockwise = false;
+        }
+        step_motor(steps, clockwise, delay = 10000); // delay should have a default to be 10000
+        cout << "motor moved: " << steps << " steps " << dir << endl;
+    }
+    else if (cmd == "speed")
+    {
+        int delay;
+        iss >> delay;
+        if (delay < 50)
+            delay = 50; // Clamp to avoid zero-delay
+        step_delay_us = delay * 10;
+        motor_running = true; // start if not running
+        cout << "Speed set: delay = " << delay << "us" << endl;
+    }
+    else if (cmd == "start")
+    {
+        motor_running = true;
+    }
+    else if (cmd == "stop" || cmd == "s")
+    {
+        motor_running = false;
+    }
+
+    else if (cmd == "led")
+    {
+        string led_arg;
+        int blink_times;
+        iss >> led_arg;
+        if (led_arg == "toggle")
+        {
+            toggle_led();
+            cout << "--toggled--" << endl;
+        }
+        if (led_arg == "blink")
+        {
             iss >> blink_times;
             blink_led(blink_times);
-            cout<<"blinking "<<blink_times<<" times"<<endl;
+            cout << "blinking " << blink_times << " times" << endl;
         }
-    } else if(cmd == "help"){
-        cout<<"usage:"<<endl<<"step steps(int) direction(cw/ccw) delay(ms)"<<endl<<"led toggle"<<endl<<"led blink times(int)"<<endl;
-    } else {
-        cout<<"use 'help' command for help"<<endl;
+    }
+    else if (cmd == "help")
+    {
+        cout << "usage:" << endl
+             << "start" << endl
+             << "stop or s" << endl
+             << "speed delay (us)"<< endl
+             << "step steps(int) direction(cw/ccw) delay(ms)" << endl
+             << "led toggle" << endl
+             << "led blink times(int)" << endl;
+    }
+    else
+    {
+        cout << "use 'help' command for help" << endl;
     }
 }
 
@@ -135,9 +201,12 @@ string get_command(){
     return line;
 }
 
+
+
 int main() {
     init_everything();
 
+    multicore_launch_core1(continuous_stepper);
 
     while(1){
         process_command(get_command());
