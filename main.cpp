@@ -36,15 +36,16 @@ void toggle_led(){
         led_on = false;
     }
 }
+void set_led(bool on){
+    gpio_put(25,on);
+}
 
 void blink_led(int times){
-    if(led_on == true){
-        toggle_led(); // turn off to start
-    }
-    for(int i = 0; i < times; i++){
-        toggle_led();
-        sleep_ms(100);
-        toggle_led();
+    for(int i = 0; i < times;i++){
+        set_led(true);
+        sleep_ms(600);
+        set_led(false);
+        sleep_ms(600);
     }
 }
 
@@ -101,7 +102,10 @@ void process_command(string line){
         string dir;
         int delay;
         iss >> steps >> dir >> delay;
-        bool clockwise = (dir == "cw" || dir == "CW");
+        bool clockwise;
+        if(dir == "cw" || dir == "CW"){
+            clockwise = true;
+        } else {clockwise = false;}
         step_motor(steps,clockwise,delay = 10000); // delay should have a default to be 10000
         cout<<"motor moved: "<<steps<<" steps "<<dir<<endl;
     }
@@ -118,6 +122,10 @@ void process_command(string line){
             blink_led(blink_times);
             cout<<"blinking "<<blink_times<<" times"<<endl;
         }
+    } else if(cmd == "help"){
+        cout<<"usage:"<<endl<<"step steps(int) direction(cw/ccw) delay(ms)"<<endl<<"led toggle"<<endl<<"led blink times(int)"<<endl;
+    } else {
+        cout<<"use 'help' command for help"<<endl;
     }
 }
 
@@ -134,42 +142,5 @@ int main() {
     while(1){
         process_command(get_command());
     }
-
-
-    // int i = 0;
-    // char buf[64];
-    // while (true) {
-
-
-
-    //     if(fgets(buf, sizeof(buf), stdin));{
-    //         buf[strcspn(buf, "\r\n")] = 0; // Strip newline
-
-    //         if (strcmp(buf, "led toggle") == 0){
-    //             toggle_led();
-    //             printf("--toggled--\n");
-    //         }
-    //         if (strcmp(buf, "step") == 0)
-    //         {
-    //             printf("stepping x\n");
-    //             step_motor(200, true, 10000); // 200 steps CW
-    //             sleep_ms(1000);
-    //         }
-
-    //         if (strcmp(buf, "led blink") == 0)
-    //         {
-    //             printf("--blink--\n");
-    //             while(true){
-    //                 toggle_led();
-    //                 sleep_ms(200);
-    //             }
-    //         }
-
-    //         else
-    //         {
-    //             printf("ERR: unknown command\n");
-    //         }
-    //     }
-    // }
 }
 
