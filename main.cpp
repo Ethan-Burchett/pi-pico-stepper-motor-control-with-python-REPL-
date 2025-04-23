@@ -85,10 +85,6 @@ void step_motor(int steps, bool dir, int delay_us = 10000)
 volatile int step_delay_us = 10000;
 
 bool motor_running = false;
-void enable_motor(bool active)
-{ // use this function to start and stop the motor
-    motor_running = active;
-}
 
 void continuous_stepper()
 {
@@ -200,8 +196,6 @@ string get_command(){
     getline(cin, line);
     return line;
 }
-
-
 
 int main() {
     init_everything();
