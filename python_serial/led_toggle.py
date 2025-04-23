@@ -2,7 +2,7 @@ import serial
 import time
 
 try:
-    port = "/dev/tty.usbmodem832101"
+    port = "/dev/tty.usbmodem212101"
     ser = serial.Serial(port, 115200) ## using timeout of 1 
 except Exception as e:
     print("Error:", e)

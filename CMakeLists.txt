@@ -28,24 +28,24 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(hello_serial C CXX ASM)
+project(main C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(hello_serial
-        hello_serial.c
+add_executable(main
+        main.cpp
         )
 
 # pull in common dependencies
-target_link_libraries(hello_serial pico_stdlib)
+target_link_libraries(main pico_stdlib)
 
-pico_enable_stdio_usb(hello_serial 1)
-pico_enable_stdio_uart(hello_serial 0)
+pico_enable_stdio_usb(main 1)
+pico_enable_stdio_uart(main 0)
 
 # create map/bin/hex/uf2 file etc.
-pico_add_extra_outputs(hello_serial)
+pico_add_extra_outputs(main)
 
 # add url via pico_set_program_url
