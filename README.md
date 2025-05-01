@@ -7,7 +7,7 @@ This is a REPL-style serial interface for controlling a stepper motor via a Rasp
 
 ---
 
-## 🧠 What It Does
+## What It Does
 
 From your computer, you can:
 
