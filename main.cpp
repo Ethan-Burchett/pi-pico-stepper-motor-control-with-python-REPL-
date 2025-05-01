@@ -28,7 +28,7 @@ using namespace std;
 // 26 is something - GP20 - dir?
 
 bool led_on = false;
-
+//useful if you want to check connection to pico 
 void toggle_led(){
     if(led_on == false){
         gpio_put(25, 1);

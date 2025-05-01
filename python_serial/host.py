@@ -58,6 +58,28 @@ def linear_oscillating_speed(
             time.sleep(0.05)  # ~20Hz update rate
 
 
+
+def impedance_demo():
+    print("running impedance demo")
+
+    # generate random impedence values: 
+    impedence_arr = [177.3717598822605, 132.3346470477663, 124.5189701046804, 66.19838752, 124.611344, 122.877515
+    ,195.3344472, 112.668416, 109.0107563911478, 109.132347, 75.5689192, 111.8993284721826]
+
+    user_input = ""
+
+    while(user_input != "exit"):
+        user_input = input("imp level:> ")
+        if(user_input == "high"):
+            write_to_pico(f"speed {1000}")
+        if(user_input == "low"):
+            write_to_pico(f"speed {300}")
+        if(user_input == "normal"):
+            write_to_pico(f"speed {600}")
+        else:
+            print("imp use: high, low, normal, exit")
+
+
 try:
     port = find_pico_port_mac()       # "/dev/tty.usbmodem212101"
     ser = serial.Serial(port, 115200) ## using timeout of 1 
@@ -82,6 +104,8 @@ while True:
         variable_speed(0.1,130,1000,30)
     if(user_input == "linear"):
         linear_oscillating_speed(1,500,20,100)
+    if(user_input == "impedance"):
+        impedance_demo()
    
     write_to_pico(user_input)
     read_from_pico()
