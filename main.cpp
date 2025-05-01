@@ -17,6 +17,7 @@ extern "C" { // put c libraries here so compiler doesn't get confused
 
 using namespace std;
 
+#define STEP_PULSE_WIDTH_US 10
 #define STEP_PIN 21
 #define DIR_PIN 20
 //#define ENABLE_PIN 36 // enable pin toggles if the driver gets power or not - not currently wired though
@@ -74,9 +75,9 @@ void step_motor(int steps, bool dir, int delay_us = 10000)
     for (int i = 0; i < steps; i++)
     {
         gpio_put(STEP_PIN, 1);
-        sleep_us(10); // Minimum HIGH pulse: 1.9us, so 10us is safe
+        sleep_us(STEP_PULSE_WIDTH_US); // Minimum HIGH pulse: 1.9us, so 10us is safe
         gpio_put(STEP_PIN, 0);
-        sleep_us(delay_us - 10); // Adjust for total step delay
+        sleep_us(delay_us - STEP_PULSE_WIDTH_US); // Adjust for total step delay
     }
     //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power   
 }
@@ -93,9 +94,9 @@ void continuous_stepper()
         if (motor_running)
         {
             gpio_put(STEP_PIN, 1);
-            sleep_us(10);
+            sleep_us(STEP_PULSE_WIDTH_US);
             gpio_put(STEP_PIN, 0);
-            sleep_us(step_delay_us - 10);
+            sleep_us(step_delay_us - STEP_PULSE_WIDTH_US);
         }
         else
         {
