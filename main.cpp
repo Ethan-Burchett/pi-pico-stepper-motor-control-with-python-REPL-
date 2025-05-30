@@ -17,17 +17,20 @@ extern "C" { // put c libraries here so compiler doesn't get confused
 
 using namespace std;
 
+#define steps_per_rev = 200
+
 #define STEP_PULSE_WIDTH_US 10
 #define STEP_PIN 21
 #define DIR_PIN 20
 //#define ENABLE_PIN 36 // enable pin toggles if the driver gets power or not - not currently wired though
 
-// 38 is ground
-// 36 is 3v3 out
-// 27 is something - GP21 - step?
-// 26 is something - GP20 - dir?
+// pico to DRV8825 pin connections
+// 38: GND
+// 36: 3V3 OUT
+// 27: STEP
+// 26: DIR
 
-bool led_on = false;
+bool led_on = true;
 //useful if you want to check connection to pico 
 void toggle_led(){
     if(led_on == false){
@@ -42,20 +45,11 @@ void set_led(bool on){
     gpio_put(25,on);
 }
 
-void blink_led(int times){
-    for(int i = 0; i < times;i++){
-        set_led(true);
-        sleep_ms(600);
-        set_led(false);
-        sleep_ms(600);
-    }
-}
-
-
+// initializing stepper driver
 void init_stepper(){
 
     gpio_init(STEP_PIN);
-    gpio_set_dir(STEP_PIN, GPIO_OUT);
+    gpio_set_dir(STEP_PIN, GPIO_OUT); //GPIO_OUT sets step_pin as output
 
     gpio_init(DIR_PIN);
     gpio_put(DIR_PIN, true);
@@ -80,6 +74,20 @@ void step_motor(int steps, bool dir, int delay_us = 10000)
         sleep_us(delay_us - STEP_PULSE_WIDTH_US); // Adjust for total step delay
     }
     //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power   
+}
+
+// input: rpm 
+// output: step delay in us
+float calculate_delay_from_RPM(float rpm){
+    return rpm * 1; // fix here add the numba
+}
+
+// function to turn motor by number of rotations
+void rotate_motor(float rotations, int rpm){
+    int steps = rotations * 200; //steps_per_rev = 200
+    
+    int step_delay = calculate_delay_from_RPM(rpm);
+    step_motor(steps, false, step_delay); // call the step_motor function
 }
 
 // globals for stepper motor:
@@ -115,7 +123,7 @@ void init_everything(){
     sleep_ms(100);
     step_motor(20, false, 10000);
 }
-void process_command(string line)
+void process_command(string line) // this is where the commands that can be entered into the terminal are defined
 {
     // break cmd into arguments
     string cmd;
@@ -137,8 +145,14 @@ void process_command(string line)
         {
             clockwise = false;
         }
-        step_motor(steps, clockwise, delay = 10000); // delay should have a default to be 10000
+        step_motor(steps, clockwise, delay); // delay should have a default to be 10000
         cout << "motor moved: " << steps << " steps " << dir << endl;
+    }
+    else if (cmd == "rotate")
+    {
+        float rotations;
+        iss >> rotations;
+        rotate_motor(rotations);
     }
     else if (cmd == "speed")
     {
@@ -169,17 +183,12 @@ void process_command(string line)
             toggle_led();
             cout << "--toggled--" << endl;
         }
-        if (led_arg == "blink")
-        {
-            iss >> blink_times;
-            blink_led(blink_times);
-            cout << "blinking " << blink_times << " times" << endl;
-        }
     }
     else if (cmd == "help")
     {
         cout << "usage:" << endl
              << "start" << endl
+             << "rotate rotations(float)" << endl
              << "stop or s" << endl
              << "speed delay (us)"<< endl
              << "step steps(int) direction(cw/ccw) delay(ms)" << endl
@@ -207,4 +216,3 @@ int main() {
         process_command(get_command());
     }
 }
-
