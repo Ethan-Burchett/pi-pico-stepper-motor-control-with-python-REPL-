@@ -30,6 +30,63 @@ using namespace std;
 // 27: STEP
 // 26: DIR
 
+// globals for stepper motor:
+// step delay in microseconds
+volatile int global_step_delay_us = 10000;
+
+volatile bool global_direction = true; // clockwise: true, counterclockwise: false
+volatile int global_steps = 0; 
+
+bool motor_running = false;
+
+void continuous_stepper()
+{
+    while (true)
+    {
+        if (motor_running) // safe - will stop motor with stop command
+        {
+            if (global_steps >= 0)
+            {
+                gpio_put(STEP_PIN, 1);
+                sleep_us(STEP_PULSE_WIDTH_US);
+                gpio_put(STEP_PIN, 0);
+                sleep_us(global_step_delay_us - STEP_PULSE_WIDTH_US);
+                global_steps--;
+            }
+        }
+        else
+        {
+            sleep_ms(10); // chill when not stepping
+        }
+    }
+}
+
+// function to set the step delay for the motor in microseconds. 
+void set_delay(int step_delay_us)
+{
+    if (step_delay_us < 50)
+    { // clamp to remove zero delay
+        step_delay_us = 50;
+    }
+
+    global_step_delay_us = step_delay_us;
+}
+
+void set_direction(bool dir){
+    global_direction = dir;
+}
+
+void set_steps(int steps){
+    global_steps = steps;
+}
+
+// safe step_motor function 
+void step_motor(int steps, bool dir, int delay_us){
+    set_delay(delay_us);
+    set_direction(dir);
+    set_steps(steps);
+}
+
 bool led_on = true;
 //useful if you want to check connection to pico 
 void toggle_led(){
@@ -54,17 +111,12 @@ void init_stepper(){
     gpio_init(DIR_PIN);
     gpio_put(DIR_PIN, true);
     gpio_set_dir(DIR_PIN, GPIO_OUT);
-
-    //gpio_init(ENABLE_PIN);
-    //gpio_set_dir(ENABLE_PIN, GPIO_OUT);
-    // gpio_put(ENABLE_PIN, 1); // disable by default
-   // gpio_put(ENABLE_PIN, 0); // enable driver - does nothing for now - torque always on
 }
 
-void step_motor(int steps, bool dir, int delay_us = 10000)
+// single threaded, does not accept the stop command
+void step_motor_unsafe(int steps, bool dir, int delay_us = 10000)
 {
     gpio_put(DIR_PIN, dir);  // true = CW, false = CCW
-   // gpio_put(ENABLE_PIN, 0); // Enable driver (active low)
 
     for (int i = 0; i < steps; i++)
     {
@@ -73,7 +125,6 @@ void step_motor(int steps, bool dir, int delay_us = 10000)
         gpio_put(STEP_PIN, 0);
         sleep_us(delay_us - STEP_PULSE_WIDTH_US); // Adjust for total step delay
     }
-    //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power   
 }
 
 // input: seconds per revolution
@@ -89,30 +140,7 @@ void rotate_motor(float rotations, int seconds){
     int steps = rotations * 200; //steps_per_rev = 200
 
     int step_delay = calculate_step_delay_from_secs_per_rev(seconds);
-    step_motor(steps, false, step_delay); // call the step_motor function
-}
-
-// globals for stepper motor:
-volatile int step_delay_us = 10000;
-
-bool motor_running = false;
-
-void continuous_stepper()
-{
-    while (true)
-    {
-        if (motor_running)
-        {
-            gpio_put(STEP_PIN, 1);
-            sleep_us(STEP_PULSE_WIDTH_US);
-            gpio_put(STEP_PIN, 0);
-            sleep_us(step_delay_us - STEP_PULSE_WIDTH_US);
-        }
-        else
-        {
-            sleep_ms(10); // chill when not stepping
-        }
-    }
+    step_motor_unsafe(steps, false, step_delay); // call the step_motor function
 }
 
 void init_everything(){
@@ -121,9 +149,9 @@ void init_everything(){
     gpio_set_dir(25, GPIO_OUT); // Set it as an output
     stdio_init_all();
     // move motor back and forth a little to check if alive
-    step_motor(20, true, 10000);
+    step_motor_unsafe(20, true, 10000);
     sleep_ms(100);
-    step_motor(20, false, 10000);
+    step_motor_unsafe(20, false, 10000);
 }
 void process_command(string line) // this is where the commands that can be entered into the terminal are defined
 {
@@ -147,14 +175,15 @@ void process_command(string line) // this is where the commands that can be ente
         {
             clockwise = false;
         }
-        step_motor(steps, clockwise, delay); // delay should have a default to be 10000
+        step_motor_unsafe(steps, clockwise, delay); // delay should have a default to be 10000
         cout << "motor moved: " << steps << " steps " << dir << endl;
     }
     else if (cmd == "rotate")
     {
         float rotations;
-        iss >> rotations;
-        rotate_motor(rotations);
+        float seconds;
+        iss >> rotations >> seconds;
+        rotate_motor(rotations,seconds);
     }
     else if (cmd == "speed")
     {
@@ -162,7 +191,7 @@ void process_command(string line) // this is where the commands that can be ente
         iss >> delay;
         if (delay < 50)
             delay = 50; // Clamp to avoid zero-delay
-        step_delay_us = delay * 10;
+        global_step_delay_us = delay * 10;
         motor_running = true; // start if not running
         cout << "Speed set: delay = " << delay << "us" << endl;
     }
