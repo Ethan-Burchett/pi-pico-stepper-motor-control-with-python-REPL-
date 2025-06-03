@@ -76,17 +76,19 @@ void step_motor(int steps, bool dir, int delay_us = 10000)
     //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power   
 }
 
-// input: rpm 
+// input: seconds per revolution
 // output: step delay in us
-float calculate_delay_from_RPM(float rpm){
-    return rpm * 1; // fix here add the numba
+int calculate_step_delay_from_secs_per_rev(float seconds){
+    float microseconds = seconds * 1000000;
+    int delay_us = microseconds / 200;
+    return delay_us; // returns how many microseconds the step delay should be to get the desired seconds per revolution
 }
 
 // function to turn motor by number of rotations
-void rotate_motor(float rotations, int rpm){
+void rotate_motor(float rotations, int seconds){
     int steps = rotations * 200; //steps_per_rev = 200
-    
-    int step_delay = calculate_delay_from_RPM(rpm);
+
+    int step_delay = calculate_step_delay_from_secs_per_rev(seconds);
     step_motor(steps, false, step_delay); // call the step_motor function
 }
 
