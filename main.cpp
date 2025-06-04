@@ -85,7 +85,7 @@ int calculate_step_delay_from_secs_per_rev(float seconds){
 }
 
 // function to turn motor by number of rotations
-void rotate_motor(float rotations, int seconds){
+void rotate_motor(float rotations, float seconds){
     int steps = rotations * 200; //steps_per_rev = 200
 
     int step_delay = calculate_step_delay_from_secs_per_rev(seconds);
@@ -150,11 +150,12 @@ void process_command(string line) // this is where the commands that can be ente
         step_motor(steps, clockwise, delay); // delay should have a default to be 10000
         cout << "motor moved: " << steps << " steps " << dir << endl;
     }
-    else if (cmd == "rotate")
+    else if (cmd == "r")
     {
         float rotations;
-        iss >> rotations;
-        rotate_motor(rotations);
+        float seconds;
+        iss >> rotations >> seconds;
+        rotate_motor(rotations,seconds);
     }
     else if (cmd == "speed")
     {
