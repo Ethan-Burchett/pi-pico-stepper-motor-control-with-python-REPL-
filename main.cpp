@@ -63,7 +63,7 @@ void init_stepper(){
 
 void step_motor(int steps, bool dir, int delay_us = 10000)
 {
-    gpio_put(DIR_PIN, dir);  // true = CW, false = CCW
+    gpio_put(DIR_PIN, dir);  // false = CW, true = CCW
    // gpio_put(ENABLE_PIN, 0); // Enable driver (active low)
 
     for (int i = 0; i < steps; i++)
@@ -84,12 +84,24 @@ int calculate_step_delay_from_secs_per_rev(float seconds){
     return delay_us; // returns how many microseconds the step delay should be to get the desired seconds per revolution
 }
 
-// function to turn motor by number of rotations
-void rotate_motor(float rotations, float seconds){
-    int steps = rotations * 200; //steps_per_rev = 200
+// function to turn motor by number of revolution
+void rotate_motor(float revolutions, bool dir, float seconds_per_rev){
+    int steps = revolutions * 200; //steps_per_rev = 200
 
-    int step_delay = calculate_step_delay_from_secs_per_rev(seconds);
-    step_motor(steps, false, step_delay); // call the step_motor function
+    int step_delay = calculate_step_delay_from_secs_per_rev(seconds_per_rev);
+    step_motor(steps, dir, step_delay); // call the step_motor function
+}
+
+// function to calculate number of revolutions from extrusion time and seconds per revolution
+float calculate_revolutions_from_time_and_speed(float extrusion_time, float seconds){
+    float revolutions = extrusion_time / seconds;
+    return revolutions;
+}
+
+// function to rotate motor based on extrusion time and seconds per revolution
+void rotate_motor_time(float extrusion_time, bool dir, float seconds_per_rev){
+    float revolutions = calculate_revolutions_from_time_and_speed(extrusion_time, seconds_per_rev);
+    rotate_motor(revolutions, dir, seconds_per_rev);
 }
 
 // globals for stepper motor:
@@ -120,10 +132,7 @@ void init_everything(){
     gpio_init(25);              // Initialize GPIO 25 (onboard LED)
     gpio_set_dir(25, GPIO_OUT); // Set it as an output
     stdio_init_all();
-    // move motor back and forth a little to check if alive
-    step_motor(20, true, 10000);
-    sleep_ms(100);
-    step_motor(20, false, 10000);
+   
 }
 void process_command(string line) // this is where the commands that can be entered into the terminal are defined
 {
@@ -152,10 +161,58 @@ void process_command(string line) // this is where the commands that can be ente
     }
     else if (cmd == "r")
     {
-        float rotations;
+        float revolutions;
         float seconds;
-        iss >> rotations >> seconds;
-        rotate_motor(rotations,seconds);
+        string direction;
+        bool up;
+
+        iss >> revolutions >> seconds >> direction;
+
+        if (direction == "cw" || direction == "CW")
+        {
+            up = false;
+        }
+        else if (direction == "ccw" || direction == "CCW")
+        {
+            up = true;
+        }
+        else
+        {
+            up = true;
+        }
+        if( revolutions < 10 && seconds > 3)
+        {
+            rotate_motor(revolutions, up, seconds);
+        }
+        else {
+            cout<<"out of bounds: too fast"<<endl;
+        }
+    }
+        else if (cmd == "rt")
+    {
+        float extrusion_time;
+        float seconds_per_rev;
+        string direction;
+        bool up;
+
+        iss >> extrusion_time >> seconds_per_rev >> direction;
+
+        if (direction == "cw" || direction == "CW")
+        {
+            up = false;
+        }
+        else if (direction == "ccw" || direction == "CCW")
+        {
+            up = true;
+        }
+        else
+        {
+            up = true;
+        }
+        
+        rotate_motor_time(extrusion_time, up, seconds_per_rev);
+        
+        
     }
     else if (cmd == "speed")
     {
@@ -191,7 +248,7 @@ void process_command(string line) // this is where the commands that can be ente
     {
         cout << "usage:" << endl
              << "start" << endl
-             << "rotate rotations(float)" << endl
+             << "rotate revolutions(float)" << endl
              << "stop or s" << endl
              << "speed delay (us)"<< endl
              << "step steps(int) direction(cw/ccw) delay(ms)" << endl
