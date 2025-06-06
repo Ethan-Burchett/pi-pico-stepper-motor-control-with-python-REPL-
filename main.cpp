@@ -5,11 +5,12 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include <string> 
+#include <string>
 #include <sstream>
-#include <iostream> 
+#include <iostream>
 
-extern "C" { // put c libraries here so compiler doesn't get confused
+extern "C"
+{ // put c libraries here so compiler doesn't get confused
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "pico/multicore.h"
@@ -17,12 +18,12 @@ extern "C" { // put c libraries here so compiler doesn't get confused
 
 using namespace std;
 
-#define steps_per_rev = 200
+#define steps_per_rev 200
 
 #define STEP_PULSE_WIDTH_US 10
 #define STEP_PIN 21
 #define DIR_PIN 20
-//#define ENABLE_PIN 36 // enable pin toggles if the driver gets power or not - not currently wired though
+// #define ENABLE_PIN 36 // enable pin toggles if the driver gets power or not - not currently wired though
 
 // pico to DRV8825 pin connections
 // 38: GND
@@ -31,10 +32,11 @@ using namespace std;
 // 26: DIR
 
 // initializing stepper driver
-void init_stepper(){
+void init_stepper()
+{
 
     gpio_init(STEP_PIN);
-    gpio_set_dir(STEP_PIN, GPIO_OUT); //GPIO_OUT sets step_pin as output
+    gpio_set_dir(STEP_PIN, GPIO_OUT); // GPIO_OUT sets step_pin as output
 
     gpio_init(DIR_PIN);
     gpio_put(DIR_PIN, true);
@@ -87,55 +89,64 @@ void step_motor(int steps, bool dir, int delay_us)
 
 // input: seconds per revolution
 // output: step delay in us
-int calculate_step_delay_from_secs_per_rev(float seconds){
+int calculate_step_delay_from_secs_per_rev(float seconds)
+{
     float microseconds = seconds * 1000000;
     int delay_us = microseconds / 200;
     return delay_us; // returns how many microseconds the step delay should be to get the desired seconds per revolution
 }
 
 // function to turn motor by number of revolution
-void rotate_motor(float revolutions, bool dir, float seconds_per_rev){
-    int steps = revolutions * 200; //steps_per_rev = 200
+void rotate_motor(float revolutions, bool dir, float seconds_per_rev)
+{
+    int steps = revolutions * 200; // steps_per_rev = 200
 
     int step_delay = calculate_step_delay_from_secs_per_rev(seconds_per_rev);
     step_motor(steps, dir, step_delay); // call the step_motor function
 }
 
 // function to calculate number of revolutions from extrusion time and seconds per revolution
-float calculate_revolutions_from_time_and_speed(float extrusion_time, float seconds){
+float calculate_revolutions_from_time_and_speed(float extrusion_time, float seconds)
+{
     float revolutions = extrusion_time / seconds;
     return revolutions;
+    
 }
 
 // function to rotate motor based on extrusion time and seconds per revolution
-void rotate_motor_time(float extrusion_time, bool dir, float seconds_per_rev){
+void rotate_motor_time(float extrusion_time, bool dir, float seconds_per_rev)
+{
     float revolutions = calculate_revolutions_from_time_and_speed(extrusion_time, seconds_per_rev);
     rotate_motor(revolutions, dir, seconds_per_rev);
 }
 
 // function to rotate motor at different rates based on impedance
-void rotate_motor_impedance(float impedance, float extrusion_time){
+void rotate_motor_impedance(float impedance, float extrusion_time)
+{
     bool dir = true;
     float seconds_per_rev = 0;
 
-    if(impedance < 117){
+    if (impedance < 117)
+    {
         seconds_per_rev = 10;
     }
-    else if(impedance >= 117 && impedance <= 137){
+    else if (impedance >= 117 && impedance <= 137)
+    {
         seconds_per_rev = 30;
     }
-    else if(impedance > 137){
+    else if (impedance > 137)
+    {
         seconds_per_rev = 50;
     }
     rotate_motor_time(extrusion_time, dir, seconds_per_rev);
 }
 
-void init_everything(){
+void init_everything()
+{
     init_stepper();
     gpio_init(25);              // Initialize GPIO 25 (onboard LED)
     gpio_set_dir(25, GPIO_OUT); // Set it as an output
     stdio_init_all();
-   
 }
 void process_command(string line) // this is where the commands that can be entered into the terminal are defined
 {
@@ -167,7 +178,7 @@ void process_command(string line) // this is where the commands that can be ente
         }
         rotate_motor(revolutions, up, seconds);
     }
-        else if (cmd == "rt") // rotate for time
+    else if (cmd == "rt") // rotate for time
     {
         float extrusion_time;
         float seconds_per_rev;
@@ -188,17 +199,16 @@ void process_command(string line) // this is where the commands that can be ente
         {
             up = true;
         }
-        
+
         rotate_motor_time(extrusion_time, up, seconds_per_rev);
-        
     }
-        else if (cmd == "ri")
+    else if (cmd == "ri")
     {
         float extrusion_time;
         float impedance;
 
         iss >> extrusion_time >> impedance;
-        
+
         rotate_motor_impedance(impedance, extrusion_time);
     }
     else if (cmd == "start")
@@ -223,28 +233,21 @@ void process_command(string line) // this is where the commands that can be ente
     }
 }
 
-string get_command(){
+string get_command()
+{
     string line;
     getline(cin, line);
     return line;
 }
 
-int main() {
+int main()
+{
     init_everything();
 
     multicore_launch_core1(continuous_stepper);
 
-    while(1){
+    while (1)
+    {
         process_command(get_command());
     }
 }
-
-
-
-
-
-
-
-
-
-

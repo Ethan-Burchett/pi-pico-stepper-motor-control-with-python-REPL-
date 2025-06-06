@@ -14,6 +14,7 @@ try:
     print("Enter a command:")
     while True:
         user_input = input("> ")
+        log_command(user_input)
         if(user_input == "exit"):
             print("exiting...")
             break
