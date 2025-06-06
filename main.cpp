@@ -30,21 +30,6 @@ using namespace std;
 // 27: STEP
 // 26: DIR
 
-bool led_on = true;
-//useful if you want to check connection to pico 
-void toggle_led(){
-    if(led_on == false){
-        gpio_put(25, 1);
-        led_on = true;
-    } else {
-        gpio_put(25, 0);
-        led_on = false;
-    }
-}
-void set_led(bool on){
-    gpio_put(25,on);
-}
-
 // initializing stepper driver
 void init_stepper(){
 
@@ -54,26 +39,50 @@ void init_stepper(){
     gpio_init(DIR_PIN);
     gpio_put(DIR_PIN, true);
     gpio_set_dir(DIR_PIN, GPIO_OUT);
-
-    //gpio_init(ENABLE_PIN);
-    //gpio_set_dir(ENABLE_PIN, GPIO_OUT);
-    // gpio_put(ENABLE_PIN, 1); // disable by default
-   // gpio_put(ENABLE_PIN, 0); // enable driver - does nothing for now - torque always on
 }
 
-void step_motor(int steps, bool dir, int delay_us = 10000)
-{
-    gpio_put(DIR_PIN, dir);  // false = CW, true = CCW
-   // gpio_put(ENABLE_PIN, 0); // Enable driver (active low)
+// globals for stepper motor:
+volatile int step_delay_us = 10000;
+volatile bool motor_running = false;
+volatile bool motor_direction = false;
+volatile int steps_remaining = 0;
 
-    for (int i = 0; i < steps; i++)
+void continuous_stepper()
+{
+    while (true)
     {
-        gpio_put(STEP_PIN, 1);
-        sleep_us(STEP_PULSE_WIDTH_US); // Minimum HIGH pulse: 1.9us, so 10us is safe
-        gpio_put(STEP_PIN, 0);
-        sleep_us(delay_us - STEP_PULSE_WIDTH_US); // Adjust for total step delay
+        if (motor_running)
+        {
+            if (steps_remaining > 0)
+            {
+                gpio_put(DIR_PIN, motor_direction);
+                // start one motor step
+                gpio_put(STEP_PIN, 1);
+                sleep_us(STEP_PULSE_WIDTH_US);
+                gpio_put(STEP_PIN, 0);
+                sleep_us(step_delay_us - STEP_PULSE_WIDTH_US);
+                // end of one motor step
+                steps_remaining--;
+
+                if (steps_remaining == 0)
+                {
+                    motor_running = false;
+                }
+            }
+        }
+        else
+        {
+            sleep_ms(2); // chill when not stepping
+        }
     }
-    //gpio_put(ENABLE_PIN, 0); // Disable if you want to cut power   
+}
+
+void step_motor(int steps, bool dir, int delay_us)
+{
+    motor_direction = dir;
+    step_delay_us = delay_us;
+    steps_remaining = steps;
+    motor_running = true;
 }
 
 // input: seconds per revolution
@@ -121,29 +130,6 @@ void rotate_motor_impedance(float impedance, float extrusion_time){
     rotate_motor_time(extrusion_time, dir, seconds_per_rev);
 }
 
-// globals for stepper motor:
-volatile int step_delay_us = 10000;
-
-bool motor_running = false;
-
-void continuous_stepper()
-{
-    while (true)
-    {
-        if (motor_running)
-        {
-            gpio_put(STEP_PIN, 1);
-            sleep_us(STEP_PULSE_WIDTH_US);
-            gpio_put(STEP_PIN, 0);
-            sleep_us(step_delay_us - STEP_PULSE_WIDTH_US);
-        }
-        else
-        {
-            sleep_ms(10); // chill when not stepping
-        }
-    }
-}
-
 void init_everything(){
     init_stepper();
     gpio_init(25);              // Initialize GPIO 25 (onboard LED)
@@ -158,32 +144,14 @@ void process_command(string line) // this is where the commands that can be ente
     istringstream iss(line);
     iss >> cmd;
 
-    if (cmd == "step")
-    {
-        int steps;
-        string dir;
-        int delay;
-        iss >> steps >> dir >> delay;
-        bool clockwise;
-        if (dir == "cw" || dir == "CW")
-        {
-            clockwise = true;
-        }
-        else
-        {
-            clockwise = false;
-        }
-        step_motor(steps, clockwise, delay); // delay should have a default to be 10000
-        cout << "motor moved: " << steps << " steps " << dir << endl;
-    }
-    else if (cmd == "r")
+    if (cmd == "r") // rotate by revolutions and seconds
     {
         float revolutions;
         float seconds;
         string direction;
         bool up;
 
-        iss >> revolutions >> seconds >> direction;
+        iss >> seconds >> revolutions >> direction;
 
         if (direction == "cw" || direction == "CW")
         {
@@ -197,15 +165,9 @@ void process_command(string line) // this is where the commands that can be ente
         {
             up = true;
         }
-        if( revolutions < 10 && seconds > 3)
-        {
-            rotate_motor(revolutions, up, seconds);
-        }
-        else {
-            cout<<"out of bounds: too fast"<<endl;
-        }
+        rotate_motor(revolutions, up, seconds);
     }
-        else if (cmd == "rt")
+        else if (cmd == "rt") // rotate for time
     {
         float extrusion_time;
         float seconds_per_rev;
@@ -232,22 +194,12 @@ void process_command(string line) // this is where the commands that can be ente
     }
         else if (cmd == "ri")
     {
-        float impedance;
         float extrusion_time;
+        float impedance;
 
-        iss >> impedance >> extrusion_time;
+        iss >> extrusion_time >> impedance;
         
         rotate_motor_impedance(impedance, extrusion_time);
-    }
-    else if (cmd == "speed")
-    {
-        int delay;
-        iss >> delay;
-        if (delay < 50)
-            delay = 50; // Clamp to avoid zero-delay
-        step_delay_us = delay * 10;
-        motor_running = true; // start if not running
-        cout << "Speed set: delay = " << delay << "us" << endl;
     }
     else if (cmd == "start")
     {
@@ -257,28 +209,13 @@ void process_command(string line) // this is where the commands that can be ente
     {
         motor_running = false;
     }
-
-    else if (cmd == "led")
-    {
-        string led_arg;
-        int blink_times;
-        iss >> led_arg;
-        if (led_arg == "toggle")
-        {
-            toggle_led();
-            cout << "--toggled--" << endl;
-        }
-    }
     else if (cmd == "help")
     {
-        cout << "usage:" << endl
-             << "start" << endl
-             << "rotate revolutions(float)" << endl
-             << "stop or s" << endl
-             << "speed delay (us)"<< endl
-             << "step steps(int) direction(cw/ccw) delay(ms)" << endl
-             << "led toggle" << endl
-             << "led blink times(int)" << endl;
+        cout << "stop or s                                                -- stops motor" << endl
+             << "start                                                    -- resumes last command" << endl
+             << "r (extrusion_time) (number of revolutions) (direction)   -- rotate           -- ex: r 3 3 cw" << endl
+             << "rt (extrusion_time) (seconds_per_revolution) (direction) -- rotate_time      -- ex: rt 3 3 cw" << endl
+             << "ri (extrusion_time) (impedance)                          -- rotate_impedance -- ex: ri 3 3 " << endl;
     }
     else
     {

@@ -32,7 +32,7 @@ def connect_to_pico():
         ser = serial.Serial(port, 115200) ## using timeout of 1 
         print("Connecting to pico on port : " + port)
     except Exception as e:
-        print("Error:", e)
+        print("Error: can't connect to pico")
 
     print(".")    
     time.sleep(1)  # Let the Pico finish booting
