@@ -20,7 +20,7 @@ using namespace std;
 
 #define steps_per_rev 200
 
-#define STEP_PULSE_WIDTH_US 10
+#define STEP_PULSE_WIDTH_US 10 // short pulse width
 #define STEP_PIN 21
 #define DIR_PIN 20
 // #define ENABLE_PIN 36 // enable pin toggles if the driver gets power or not - not currently wired though
@@ -44,7 +44,7 @@ void init_stepper()
 }
 
 // globals for stepper motor:
-volatile int step_delay_us = 10000;
+volatile int step_delay_us = 10000; // long pulse width
 volatile bool motor_running = false;
 volatile bool motor_direction = false;
 volatile int steps_remaining = 0;
@@ -79,6 +79,7 @@ void continuous_stepper()
     }
 }
 
+// function to set global variables to control stepper motor
 void step_motor(int steps, bool dir, int delay_us)
 {
     motor_direction = dir;
@@ -96,7 +97,9 @@ int calculate_step_delay_from_secs_per_rev(float seconds)
     return delay_us; // returns how many microseconds the step delay should be to get the desired seconds per revolution
 }
 
-// function to turn motor by number of revolution
+// function to turn motor by number of revolutions
+// input: number of revolutions, direction, seconds per revolution
+// action: calls step motor function and turns motor for number of revolutions
 void rotate_motor(float revolutions, bool dir, float seconds_per_rev)
 {
     int steps = revolutions * 200; // steps_per_rev = 200
@@ -106,14 +109,18 @@ void rotate_motor(float revolutions, bool dir, float seconds_per_rev)
 }
 
 // function to calculate number of revolutions from extrusion time and seconds per revolution
+// input: extrusion time, seconds per revolution
+// output: number of revolutions
 float calculate_revolutions_from_time_and_speed(float extrusion_time, float seconds)
 {
     float revolutions = extrusion_time / seconds;
     return revolutions;
-    
+
 }
 
 // function to rotate motor based on extrusion time and seconds per revolution
+// input: extrusion time, seconds per revolution
+// action: calls rotate motor function and turns motor for set time
 void rotate_motor_time(float extrusion_time, bool dir, float seconds_per_rev)
 {
     float revolutions = calculate_revolutions_from_time_and_speed(extrusion_time, seconds_per_rev);
@@ -121,6 +128,10 @@ void rotate_motor_time(float extrusion_time, bool dir, float seconds_per_rev)
 }
 
 // function to rotate motor at different rates based on impedance
+// input: impedance, extrusion time
+// impedance less than 117 ohms motor turns 10 s/rev (|Z|<117)
+// impedance between 117 and 137 motor turns 30 s/rev (117 >= |Z| <= 137)
+// impedance greater than 137 motor turns 50 s/rev (|Z| > 137)
 void rotate_motor_impedance(float impedance, float extrusion_time)
 {
     bool dir = true;
@@ -143,17 +154,16 @@ void rotate_motor_impedance(float impedance, float extrusion_time)
 
 void init_everything()
 {
-    init_stepper();
-    gpio_init(25);              // Initialize GPIO 25 (onboard LED)
-    gpio_set_dir(25, GPIO_OUT); // Set it as an output
-    stdio_init_all();
+    init_stepper(); // initializes stepper motor
+    stdio_init_all(); // initializes input/output on pico for serial communication
 }
+
 void process_command(string line) // this is where the commands that can be entered into the terminal are defined
 {
     // break cmd into arguments
     string cmd;
     istringstream iss(line);
-    iss >> cmd;
+    iss >> cmd; // gets first chunk of user input string and identifies it as a command
 
     if (cmd == "r") // rotate by revolutions and seconds
     {
@@ -162,7 +172,7 @@ void process_command(string line) // this is where the commands that can be ente
         string direction;
         bool up;
 
-        iss >> seconds >> revolutions >> direction;
+        iss >> seconds >> revolutions >> direction; // this is the format for defining user input strings as commands
 
         if (direction == "cw" || direction == "CW")
         {
