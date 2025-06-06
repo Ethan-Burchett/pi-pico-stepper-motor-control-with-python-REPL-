@@ -104,6 +104,23 @@ void rotate_motor_time(float extrusion_time, bool dir, float seconds_per_rev){
     rotate_motor(revolutions, dir, seconds_per_rev);
 }
 
+// function to rotate motor at different rates based on impedance
+void rotate_motor_impedance(float impedance, float extrusion_time){
+    bool dir = true;
+    float seconds_per_rev = 0;
+
+    if(impedance < 117){
+        seconds_per_rev = 10;
+    }
+    else if(impedance >= 117 && impedance <= 137){
+        seconds_per_rev = 30;
+    }
+    else if(impedance > 137){
+        seconds_per_rev = 50;
+    }
+    rotate_motor_time(extrusion_time, dir, seconds_per_rev);
+}
+
 // globals for stepper motor:
 volatile int step_delay_us = 10000;
 
@@ -212,7 +229,15 @@ void process_command(string line) // this is where the commands that can be ente
         
         rotate_motor_time(extrusion_time, up, seconds_per_rev);
         
+    }
+        else if (cmd == "ri")
+    {
+        float impedance;
+        float extrusion_time;
+
+        iss >> impedance >> extrusion_time;
         
+        rotate_motor_impedance(impedance, extrusion_time);
     }
     else if (cmd == "speed")
     {
@@ -276,3 +301,13 @@ int main() {
         process_command(get_command());
     }
 }
+
+
+
+
+
+
+
+
+
+
